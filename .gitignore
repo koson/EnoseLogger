@@ -1,0 +1,21 @@
+# Build results
+bin/
+obj/
+publish/
+publish-*/
+
+# Session data (user generated)
+sessions/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deployment artifacts
+*.zip

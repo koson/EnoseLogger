@@ -1,0 +1,300 @@
+@page "/"
+@using EnoseLogger.Models
+@using EnoseLogger.Services
+@inject SessionManager Sessions
+@inject NavigationManager Nav
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>E-Nose Logger</PageTitle>
+
+<div class="container-fluid p-3" style="max-width: 800px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">🔬 E-Nose Logger</h2>
+        @if (currentSession != null)
+        {
+            <span class="badge bg-success fs-5">🟢 Recording</span>
+        }
+    </div>
+    
+    @if (currentSession == null)
+    {
+        <!-- Start Session Card -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Start New Session</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Device</label>
+                    <select class="form-select form-select-lg" @bind="selectedDevice">
+                        <option value="TAWEN-001">TAWEN-001</option>
+                        <option value="TAWEN-002">TAWEN-002</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-success btn-lg w-100" 
+                        @onclick="StartSession"
+                        disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    ▶️ Start Logging
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Active Session Card -->
+        <div class="card shadow-sm mb-3 border-success border-3">
+            <div class="card-body">
+                <h5 class="card-title text-success mb-3">
+                    <i class="bi bi-record-circle-fill"></i> Active Session
+                </h5>
+                
+                <div class="row text-center mb-4">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">Device</h6>
+                            <h4 class="mb-0 text-primary">@currentSession.DeviceId</h4>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">Samples</h6>
+                            <h4 class="mb-0 text-success">@currentSession.SampleCount</h4>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <h6 class="text-muted">Duration</h6>
+                        <h5 class="text-dark">@FormatDuration(currentSession.Duration)</h5>
+                    </div>
+                    <div class="col-6">
+                        <h6 class="text-muted">Time Remaining</h6>
+                        <h5 class="@(timeRemaining.TotalMinutes < 10 ? "text-danger" : "text-warning")">
+                            @FormatDuration(timeRemaining)
+                        </h5>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="progress" style="height: 15px;">
+                        <div class="progress-bar @(timeRemaining.TotalMinutes < 10 ? "bg-danger" : "bg-warning")" 
+                             role="progressbar" 
+                             style="width: @Math.Min(100, (currentSession.Duration.TotalSeconds / 3600.0 * 100))%">
+                        </div>
+                    </div>
+                    <small class="text-muted">Auto-stop at 1 hour</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Label (Optional)</label>
+                    <input type="text" 
+                           class="form-control form-control-lg" 
+                           @bind="sessionLabel" 
+                           placeholder="e.g., coffee, smoke, normal"
+                           @bind:event="oninput" />
+                    <small class="text-muted">Leave empty to use timestamp as label</small>
+                </div>
+                
+                <button class="btn btn-danger btn-lg w-100" 
+                        @onclick="StopSession"
+                        disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    ⏹️ Stop & Save
+                </button>
+            </div>
+        </div>
+    }
+    
+    <!-- Recent Sessions -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title mb-3">📋 Recent Sessions</h5>
+            
+            @if (sessions.Count == 0)
+            {
+                <div class="text-center text-muted py-4">
+                    <p class="mb-0">No sessions yet. Start your first logging session above.</p>
+                </div>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var s in sessions.Take(10))
+                    {
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <h6 class="mb-0 me-2">@s.DeviceId</h6>
+                                        @if (!string.IsNullOrEmpty(s.Label))
+                                        {
+                                            <span class="badge bg-primary">@s.Label</span>
+                                        }
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> @s.StartTime.ToString("yyyy-MM-dd HH:mm")
+                                        <span class="ms-2">
+                                            <i class="bi bi-bar-chart"></i> @s.SampleCount samples
+                                        </span>
+                                        @if (s.Duration.TotalSeconds > 0)
+                                        {
+                                            <span class="ms-2">
+                                                <i class="bi bi-stopwatch"></i> @FormatDuration(s.Duration)
+                                            </span>
+                                        }
+                                    </small>
+                                </div>
+                                <div>
+                                    <a href="/download/@s.SessionId" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-download"></i> CSV
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string selectedDevice = "TAWEN-002";
+    private string sessionLabel = "";
+    private Session? currentSession;
+    private List<Session> sessions = new();
+    private TimeSpan timeRemaining = TimeSpan.Zero;
+    private bool isLoading = false;
+    private System.Threading.Timer? uiTimer;
+    
+    protected override void OnInitialized()
+    {
+        sessions = Sessions.GetRecentSessions();
+        currentSession = Sessions.ActiveSession;
+        
+        Sessions.OnSessionChanged += OnSessionChanged;
+        
+        // UI update timer (every second)
+        uiTimer = new System.Threading.Timer(_ =>
+        {
+            if (currentSession != null)
+            {
+                currentSession.Duration = DateTime.Now - currentSession.StartTime;
+                timeRemaining = TimeSpan.FromHours(1) - currentSession.Duration;
+                
+                InvokeAsync(StateHasChanged);
+            }
+        }, null, 0, 1000);
+    }
+    
+    private void OnSessionChanged()
+    {
+        currentSession = Sessions.ActiveSession;
+        sessions = Sessions.GetRecentSessions();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task StartSession()
+    {
+        isLoading = true;
+        try
+        {
+            currentSession = await Sessions.StartSessionAsync(selectedDevice);
+            sessionLabel = "";
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error toast
+            Console.WriteLine($"Error starting session: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task StopSession()
+    {
+        if (currentSession == null) return;
+        
+        isLoading = true;
+        try
+        {
+            var label = string.IsNullOrWhiteSpace(sessionLabel) 
+                ? currentSession.StartTime.ToString("yyyyMMdd_HHmmss") 
+                : sessionLabel;
+            
+            await Sessions.StopSessionAsync(currentSession.SessionId, label);
+            sessions = Sessions.GetRecentSessions();
+            currentSession = null;
+            sessionLabel = "";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error stopping session: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private string FormatDuration(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+        return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
+    }
+    
+    public void Dispose()
+    {
+        uiTimer?.Dispose();
+        Sessions.OnSessionChanged -= OnSessionChanged;
+    }
+}
+
+<style>
+    /* Mobile-optimized styles */
+    .btn-lg {
+        padding: 1rem 1.5rem;
+        font-size: 1.25rem;
+    }
+    
+    .card {
+        border-radius: 15px;
+    }
+    
+    .badge {
+        font-size: 0.9rem;
+        padding: 0.4em 0.8em;
+    }
+    
+    .list-group-item {
+        border-radius: 10px !important;
+        margin-bottom: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .progress {
+        border-radius: 10px;
+    }
+    
+    .progress-bar {
+        border-radius: 10px;
+    }
+</style>
