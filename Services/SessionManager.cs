@@ -61,7 +61,7 @@ public class SessionManager : IDisposable
         {
             SessionId = timestamp,
             DeviceId = deviceId,
-            StartTime = localTime,
+            StartTime = DateTime.UtcNow,  // Store as UTC for consistency across timezones
             FolderPath = Path.Combine(_sessionsPath, $"session_{timestamp}_{deviceId}")
         };
         
@@ -131,7 +131,7 @@ public class SessionManager : IDisposable
             _csvWriter.Flush();
             
             _activeSession.SampleCount++;
-            _activeSession.Duration = GetLocalTime() - _activeSession.StartTime;
+            // Duration will be calculated on client side using UTC
             
             OnSessionChanged?.Invoke();
         }
@@ -165,7 +165,7 @@ public class SessionManager : IDisposable
             }
             
             // Update session info
-            _activeSession.EndTime = GetLocalTime();
+            _activeSession.EndTime = DateTime.UtcNow;  // Store as UTC
             _activeSession.Label = label;
             _activeSession.Duration = _activeSession.EndTime.Value - _activeSession.StartTime;
             

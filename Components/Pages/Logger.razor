@@ -142,7 +142,7 @@
                                         }
                                     </div>
                                     <small class="text-muted">
-                                        <i class="bi bi-clock"></i> @s.StartTime.ToString("yyyy-MM-dd HH:mm")
+                                        <i class="bi bi-clock"></i> @ToLocalTime(s.StartTime).ToString("yyyy-MM-dd HH:mm")
                                         <span class="ms-2">
                                             <i class="bi bi-bar-chart"></i> @s.SampleCount samples
                                         </span>
@@ -190,7 +190,8 @@
         {
             if (currentSession != null)
             {
-                currentSession.Duration = DateTime.Now - currentSession.StartTime;
+                // Calculate Duration using UTC (consistent across timezones)
+                currentSession.Duration = DateTime.UtcNow - currentSession.StartTime;
                 timeRemaining = TimeSpan.FromHours(1) - currentSession.Duration;
                 
                 InvokeAsync(StateHasChanged);
@@ -232,7 +233,7 @@
         try
         {
             var label = string.IsNullOrWhiteSpace(sessionLabel) 
-                ? currentSession.StartTime.ToString("yyyyMMdd_HHmmss") 
+                ? ToLocalTime(currentSession.StartTime).ToString("yyyyMMdd_HHmmss") 
                 : sessionLabel;
             
             await Sessions.StopSessionAsync(currentSession.SessionId, label);
@@ -255,6 +256,21 @@
         if (ts.TotalHours >= 1)
             return $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}";
         return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
+    }
+    
+    private DateTime ToLocalTime(DateTime utcTime)
+    {
+        // Convert UTC to Thailand time (UTC+7)
+        try
+        {
+            var localZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+            return TimeZoneInfo.ConvertTimeFromUtc(utcTime, localZone);
+        }
+        catch
+        {
+            // Fallback: add 7 hours
+            return utcTime.AddHours(7);
+        }
     }
     
     public void Dispose()
