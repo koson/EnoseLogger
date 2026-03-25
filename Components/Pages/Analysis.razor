@@ -1,0 +1,363 @@
+@page "/session/{SessionId}"
+@using EnoseLogger.Models
+@using EnoseLogger.Services
+@using ApexCharts
+@inject SessionManager Sessions
+@inject NavigationManager Nav
+
+<PageTitle>Session Analysis</PageTitle>
+
+<div class="container-fluid p-3">
+    @if (session == null)
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> Session not found
+        </div>
+        <a href="/" class="btn btn-primary">← Back to Sessions</a>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>📈 Session Analysis</h2>
+            <a href="/" class="btn btn-outline-secondary">← Back</a>
+        </div>
+
+        <!-- Session Info Card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Session ID</h6>
+                        <p class="mb-0"><strong>@session.SessionId</strong></p>
+                    </div>
+                    <div class="col-md-2">
+                        <h6 class="text-muted">Device</h6>
+                        <p class="mb-0"><span class="badge bg-primary">@session.DeviceId</span></p>
+                    </div>
+                    <div class="col-md-2">
+                        <h6 class="text-muted">Samples</h6>
+                        <p class="mb-0"><strong>@session.SampleCount</strong></p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted">Start Time</h6>
+                        <p class="mb-0">@ToLocalTime(session.StartTime).ToString("yyyy-MM-dd HH:mm:ss")</p>
+                    </div>
+                    <div class="col-md-2">
+                        <h6 class="text-muted">Duration</h6>
+                        <p class="mb-0"><strong>@FormatDuration(session.Duration)</strong></p>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(session.Label))
+                {
+                    <div class="mt-2">
+                        <h6 class="text-muted">Label</h6>
+                        <span class="badge bg-success">@session.Label</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading data...</p>
+            </div>
+        }
+        else if (sensorData.Count == 0)
+        {
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-circle"></i> No data available in this session
+            </div>
+        }
+        else
+        {
+            <!-- Statistics Cards -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">📊 Gas Sensors Statistics</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Sensor</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Avg</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>SO2</strong></td>
+                                        <td>@sensorData.Min(d => d.SO2)</td>
+                                        <td>@sensorData.Max(d => d.SO2)</td>
+                                        <td>@((int)sensorData.Average(d => d.SO2))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>NO2</strong></td>
+                                        <td>@sensorData.Min(d => d.NO2)</td>
+                                        <td>@sensorData.Max(d => d.NO2)</td>
+                                        <td>@((int)sensorData.Average(d => d.NO2))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>NO</strong></td>
+                                        <td>@sensorData.Min(d => d.NO)</td>
+                                        <td>@sensorData.Max(d => d.NO)</td>
+                                        <td>@((int)sensorData.Average(d => d.NO))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>CO</strong></td>
+                                        <td>@sensorData.Min(d => d.CO)</td>
+                                        <td>@sensorData.Max(d => d.CO)</td>
+                                        <td>@((int)sensorData.Average(d => d.CO))</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">🌡️ Environment Statistics</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Sensor</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Avg</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>VOC1</strong></td>
+                                        <td>@sensorData.Min(d => d.VOC1)</td>
+                                        <td>@sensorData.Max(d => d.VOC1)</td>
+                                        <td>@((int)sensorData.Average(d => d.VOC1))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>VOC2</strong></td>
+                                        <td>@sensorData.Min(d => d.VOC2)</td>
+                                        <td>@sensorData.Max(d => d.VOC2)</td>
+                                        <td>@((int)sensorData.Average(d => d.VOC2))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Temp</strong></td>
+                                        <td>@sensorData.Min(d => d.Temp)</td>
+                                        <td>@sensorData.Max(d => d.Temp)</td>
+                                        <td>@((int)sensorData.Average(d => d.Temp))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>RH</strong></td>
+                                        <td>@sensorData.Min(d => d.RH)</td>
+                                        <td>@sensorData.Max(d => d.RH)</td>
+                                        <td>@((int)sensorData.Average(d => d.RH))</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Gas Sensors (SO2, NO2, NO, CO)</h5>
+                </div>
+                <div class="card-body">
+                    <ApexChart TItem="SensorData"
+                               Title=""
+                               Height="350">
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="SO2"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.SO2))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="NO2"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.NO2))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="NO"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.NO))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="CO"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.CO))"
+                                         OrderBy="e => e.X" />
+                    </ApexChart>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">VOC Sensors</h5>
+                </div>
+                <div class="card-body">
+                    <ApexChart TItem="SensorData"
+                               Title=""
+                               Height="300">
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="VOC1"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.VOC1))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="VOC2"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.VOC2))"
+                                         OrderBy="e => e.X" />
+                    </ApexChart>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Environment (Temperature & Humidity)</h5>
+                </div>
+                <div class="card-body">
+                    <ApexChart TItem="SensorData"
+                               Title=""
+                               Height="300">
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="Temperature"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.Temp))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="Humidity"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.RH))"
+                                         OrderBy="e => e.X" />
+                    </ApexChart>
+                </div>
+            </div>
+
+            <!-- Download Section -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <a href="/download/@session.SessionId" class="btn btn-primary btn-lg">
+                        <i class="bi bi-download"></i> Download CSV
+                    </a>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string SessionId { get; set; } = string.Empty;
+
+    private Session? session;
+    private List<SensorData> sensorData = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Find session
+        var sessions = Sessions.GetRecentSessions();
+        session = sessions.FirstOrDefault(s => s.SessionId == SessionId);
+
+        if (session != null)
+        {
+            await LoadSessionData();
+        }
+
+        isLoading = false;
+    }
+
+    private async Task LoadSessionData()
+    {
+        if (session == null) return;
+
+        try
+        {
+            var csvPath = Path.Combine(session.FolderPath, "data.csv");
+            if (!File.Exists(csvPath)) return;
+
+            var lines = await File.ReadAllLinesAsync(csvPath);
+
+            // Skip header
+            foreach (var line in lines.Skip(1))
+            {
+                var parts = line.Split(',');
+                if (parts.Length >= 9)
+                {
+                    sensorData.Add(new SensorData
+                    {
+                        Timestamp = DateTime.Parse(parts[0]),
+                        SO2 = int.Parse(parts[1]),
+                        NO2 = int.Parse(parts[2]),
+                        NO = int.Parse(parts[3]),
+                        CO = int.Parse(parts[4]),
+                        VOC1 = int.Parse(parts[5]),
+                        VOC2 = int.Parse(parts[6]),
+                        Temp = int.Parse(parts[7]),
+                        RH = int.Parse(parts[8])
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+    }
+
+    private string FormatDuration(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+        return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
+    }
+
+    private DateTime ToLocalTime(DateTime utcTime)
+    {
+        try
+        {
+            var localZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+            return TimeZoneInfo.ConvertTimeFromUtc(utcTime, localZone);
+        }
+        catch
+        {
+            return utcTime.AddHours(7);
+        }
+    }
+}

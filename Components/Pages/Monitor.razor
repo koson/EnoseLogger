@@ -1,0 +1,285 @@
+@page "/monitor"
+@using EnoseLogger.Models
+@using EnoseLogger.Services
+@using ApexCharts
+@inject SessionManager Sessions
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Real-time Monitor</PageTitle>
+
+<div class="container-fluid p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>📊 Real-time Monitor</h2>
+        @if (currentSession != null)
+        {
+            <span class="badge bg-success fs-5">🟢 Recording</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary fs-5">⚫ No Active Session</span>
+        }
+    </div>
+
+    @if (currentSession == null)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> 
+            <strong>No active session.</strong> 
+            Start a new session from the <a href="/" class="alert-link">Session Logger</a> page to see real-time data.
+        </div>
+    }
+    else
+    {
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Device</h6>
+                        <h5 class="text-primary mb-0">@currentSession.DeviceId</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Samples</h6>
+                        <h5 class="text-success mb-0">@currentSession.SampleCount</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Duration</h6>
+                        <h5 class="text-dark mb-0">@FormatDuration(currentSession.Duration)</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Last Update</h6>
+                        <h5 class="text-info mb-0">@lastUpdateTime</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (sensorData.Count > 0)
+        {
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Gas Sensors (SO2, NO2, NO, CO)</h5>
+                </div>
+                <div class="card-body">
+                    <ApexChart TItem="SensorData"
+                               Title=""
+                               Height="300"
+                               @ref="gasChart">
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="SO2"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.SO2))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="NO2"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.NO2))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="NO"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.NO))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="CO"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.CO))"
+                                         OrderBy="e => e.X" />
+                    </ApexChart>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">VOC Sensors</h5>
+                </div>
+                <div class="card-body">
+                    <ApexChart TItem="SensorData"
+                               Title=""
+                               Height="250"
+                               @ref="vocChart">
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="VOC1"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.VOC1))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="VOC2"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.VOC2))"
+                                         OrderBy="e => e.X" />
+                    </ApexChart>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Environment (Temperature & Humidity)</h5>
+                </div>
+                <div class="card-body">
+                    <ApexChart TItem="SensorData"
+                               Title=""
+                               Height="250"
+                               @ref="envChart">
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="Temperature"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.Temp))"
+                                         OrderBy="e => e.X" />
+                        
+                        <ApexPointSeries TItem="SensorData"
+                                         Items="@sensorData"
+                                         Name="Humidity"
+                                         SeriesType="SeriesType.Line"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YAggregate="@(e => e.Sum(v => v.RH))"
+                                         OrderBy="e => e.X" />
+                    </ApexChart>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                <i class="bi bi-hourglass-split"></i> Waiting for data...
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private Session? currentSession;
+    private List<SensorData> sensorData = new();
+    private ApexChart<SensorData>? gasChart;
+    private ApexChart<SensorData>? vocChart;
+    private ApexChart<SensorData>? envChart;
+    private System.Threading.Timer? updateTimer;
+    private string lastUpdateTime = "--:--:--";
+    private const int MaxDataPoints = 100; // Keep last 100 points for performance
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentSession = Sessions.ActiveSession;
+        Sessions.OnSessionChanged += OnSessionChanged;
+
+        // Load existing data if session is active
+        if (currentSession != null)
+        {
+            await LoadSessionData();
+        }
+
+        // Update timer (every 2 seconds to avoid too many redraws)
+        updateTimer = new System.Threading.Timer(async _ =>
+        {
+            if (currentSession != null)
+            {
+                await LoadSessionData();
+                await InvokeAsync(StateHasChanged);
+            }
+        }, null, 0, 2000);
+    }
+
+    private async Task LoadSessionData()
+    {
+        if (currentSession == null) return;
+
+        try
+        {
+            var csvPath = Path.Combine(currentSession.FolderPath, "data.csv");
+            if (!File.Exists(csvPath)) return;
+
+            var newData = new List<SensorData>();
+            var lines = await File.ReadAllLinesAsync(csvPath);
+
+            // Skip header, read all lines
+            foreach (var line in lines.Skip(1))
+            {
+                var parts = line.Split(',');
+                if (parts.Length >= 9)
+                {
+                    newData.Add(new SensorData
+                    {
+                        Timestamp = DateTime.Parse(parts[0]),
+                        SO2 = int.Parse(parts[1]),
+                        NO2 = int.Parse(parts[2]),
+                        NO = int.Parse(parts[3]),
+                        CO = int.Parse(parts[4]),
+                        VOC1 = int.Parse(parts[5]),
+                        VOC2 = int.Parse(parts[6]),
+                        Temp = int.Parse(parts[7]),
+                        RH = int.Parse(parts[8])
+                    });
+                }
+            }
+
+            // Keep only last N points for performance
+            sensorData = newData.TakeLast(MaxDataPoints).ToList();
+            lastUpdateTime = DateTime.Now.ToString("HH:mm:ss");
+
+            // Update charts
+            if (gasChart != null) await gasChart.UpdateSeriesAsync(true);
+            if (vocChart != null) await vocChart.UpdateSeriesAsync(true);
+            if (envChart != null) await envChart.UpdateSeriesAsync(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+    }
+
+    private void OnSessionChanged()
+    {
+        currentSession = Sessions.ActiveSession;
+        if (currentSession == null)
+        {
+            sensorData.Clear();
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string FormatDuration(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+        return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
+    }
+
+    public void Dispose()
+    {
+        updateTimer?.Dispose();
+        Sessions.OnSessionChanged -= OnSessionChanged;
+    }
+}
