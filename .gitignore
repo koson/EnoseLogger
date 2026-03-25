@@ -19,3 +19,4 @@ Thumbs.db
 
 # Deployment artifacts
 *.zip
+*.tar.gz
