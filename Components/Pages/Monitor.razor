@@ -239,8 +239,8 @@
                         CO = int.Parse(parts[4]),
                         VOC1 = int.Parse(parts[5]),
                         VOC2 = int.Parse(parts[6]),
-                        Temp = int.Parse(parts[7]),
-                        RH = int.Parse(parts[8])
+                        Temp = int.Parse(parts[7]) / 10.0m,  // Stored as int*10, display as decimal
+                        RH = int.Parse(parts[8]) / 10.0m     // Stored as int*10, display as decimal
                     });
                 }
             }
