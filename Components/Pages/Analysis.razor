@@ -341,8 +341,13 @@
                 }
             }
 
-            // Force UI update after data is loaded
+            // Force UI update and refresh charts
             StateHasChanged();
+            
+            // Update all charts after data is loaded
+            if (gasChart != null) await gasChart.UpdateSeriesAsync(true);
+            if (vocChart != null) await vocChart.UpdateSeriesAsync(true);
+            if (envChart != null) await envChart.UpdateSeriesAsync(true);
         }
         catch (Exception ex)
         {
