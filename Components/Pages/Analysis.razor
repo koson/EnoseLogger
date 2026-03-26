@@ -176,7 +176,8 @@
                 <div class="card-body">
                     <ApexChart TItem="SensorData"
                                Title=""
-                               Height="350">
+                               Height="350"
+                               @ref="gasChart">
                         
                         <ApexPointSeries TItem="SensorData"
                                          Items="@sensorData"
@@ -220,7 +221,8 @@
                 <div class="card-body">
                     <ApexChart TItem="SensorData"
                                Title=""
-                               Height="300">
+                               Height="300"
+                               @ref="vocChart">
                         
                         <ApexPointSeries TItem="SensorData"
                                          Items="@sensorData"
@@ -248,7 +250,8 @@
                 <div class="card-body">
                     <ApexChart TItem="SensorData"
                                Title=""
-                               Height="300">
+                               Height="300"
+                               @ref="envChart">
                         
                         <ApexPointSeries TItem="SensorData"
                                          Items="@sensorData"
@@ -288,6 +291,9 @@
     private Session? session;
     private List<SensorData> sensorData = new();
     private bool isLoading = true;
+    private ApexChart<SensorData>? gasChart;
+    private ApexChart<SensorData>? vocChart;
+    private ApexChart<SensorData>? envChart;
 
     protected override async Task OnInitializedAsync()
     {
