@@ -334,6 +334,9 @@
                     });
                 }
             }
+
+            // Force UI update after data is loaded
+            StateHasChanged();
         }
         catch (Exception ex)
         {
